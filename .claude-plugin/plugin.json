@@ -1,0 +1,10 @@
+{
+  "name": "astack",
+  "version": "0.1.0",
+  "description": "Aiden's Stack — curated Claude Code skills.",
+  "author": { "name": "Aiden Ahn (Seungwon An)", "url": "https://seunan.dev" },
+  "homepage": "https://github.com/seungwonme/astack",
+  "repository": "https://github.com/seungwonme/astack",
+  "license": "MIT",
+  "keywords": ["claude-code", "skills", "productivity"]
+}

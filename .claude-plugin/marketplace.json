@@ -1,0 +1,11 @@
+{
+  "name": "astack",
+  "owner": { "name": "Aiden Ahn", "url": "https://github.com/seungwonme" },
+  "plugins": [
+    {
+      "name": "astack",
+      "source": "./",
+      "description": "Aiden's curated Claude Code skills."
+    }
+  ]
+}

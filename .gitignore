@@ -1,0 +1,17 @@
+# secrets — never commit
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# voice-memos local data / cache (never commit)
+prompts/
+.omc/
+
+# os
+.DS_Store
+
+# obsidian attachments
+_AttachedFiles/

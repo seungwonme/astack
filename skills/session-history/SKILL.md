@@ -1,4 +1,5 @@
 ---
+argument-hint: "[query]"
 name: session-history
 description: Claude Code + Codex 통합 세션 히스토리 조회. 세션 목록, 전체 대화 내역, 도구 호출 포함 상세 보기를 지원. Use when user says "오늘 뭐 했지", "세션 히스토리", "session history", "작업 내역", "오늘 한 일", "뭐 했더라", "history", "대화 내역", or wants to review past Claude Code/Codex sessions.
 ---

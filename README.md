@@ -7,7 +7,7 @@
 ## Install
 
 ```text
-/plugin marketplace add seungwonme/astack
+/plugin marketplace add ai-native-engineer/astack
 /plugin install astack@astack
 ```
 

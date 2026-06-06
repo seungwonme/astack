@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oss-contrib :: bootstrap
+# oss-explore :: bootstrap
 # 외부 레포 기여 시작: fork → clone → 기여 브랜치 생성. upstream remote는 gh가 자동 설정.
 # PR 생성은 의도적으로 자동화하지 않는다(레포별 규약이 다름) — SKILL.md의 gh pr create 안내 참고.
 #

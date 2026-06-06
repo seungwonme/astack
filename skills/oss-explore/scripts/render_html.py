@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""oss-contrib :: render_html
-stdin 으로 contributions.sh / stats.sh 의 JSON 을 받아 단일 HTML 리포트를 stdout 으로 출력.
+"""oss-explore :: render_html
+stdin 으로 explore.sh / contributions.sh / stats.sh 의 JSON 을 받아 단일 HTML 리포트를 stdout 으로 출력.
 의존성 0 (표준 라이브러리만), 다크/라이트 자동 대응, 인라인 CSS.
 """
 import sys
@@ -108,6 +108,63 @@ def render_stats(d):
     return f"{esc(d.get('user',''))} — 기여 통계", body
 
 
+def render_explore(d):
+    q = d.get("query", {})
+    repos = d.get("repos", [])
+    with_issues = q.get("with_issues", False)
+    contributable = [r for r in repos if (r.get("gfi") or 0) > 0 or (r.get("hw") or 0) > 0]
+    total_gfi = sum(r.get("gfi") or 0 for r in repos)
+
+    cards = [f"<div class='card'><div class='num'>{len(repos)}</div><div class='lbl'>발견된 레포</div></div>"]
+    if with_issues:
+        cards.append(f"<div class='card'><div class='num'>{len(contributable)}</div><div class='lbl'>기여 가능 레포</div></div>")
+        cards.append(f"<div class='card'><div class='num'>{total_gfi}</div><div class='lbl'>good first issue 합계</div></div>")
+    cards_html = f"<div class='cards'>{''.join(cards)}</div>"
+
+    if repos:
+        if with_issues:
+            head = "<tr><th>레포</th><th>★</th><th>언어</th><th>최근푸시</th><th>GFI</th><th>HW</th><th>설명</th></tr>"
+            rows = "\n".join(
+                f"<tr><td><a href='{esc(r['url'])}' target='_blank'>{esc(r['repo'])}</a></td>"
+                f"<td class='c'><span class='star'>★ {r['stars']:,}</span></td>"
+                f"<td class='c'>{esc(r['language'])}</td>"
+                f"<td class='c'>{esc(r['pushed'])}</td>"
+                f"<td class='c'>{'<strong>'+str(r['gfi'])+'</strong>' if (r.get('gfi') or 0) > 0 else 0}</td>"
+                f"<td class='c'>{r.get('hw') or 0}</td>"
+                f"<td class='desc'>{esc(r.get('description', ''))}</td></tr>"
+                for r in repos
+            )
+        else:
+            head = "<tr><th>레포</th><th>★</th><th>언어</th><th>최근푸시</th><th>설명</th></tr>"
+            rows = "\n".join(
+                f"<tr><td><a href='{esc(r['url'])}' target='_blank'>{esc(r['repo'])}</a></td>"
+                f"<td class='c'><span class='star'>★ {r['stars']:,}</span></td>"
+                f"<td class='c'>{esc(r['language'])}</td>"
+                f"<td class='c'>{esc(r['pushed'])}</td>"
+                f"<td class='desc'>{esc(r.get('description', ''))}</td></tr>"
+                for r in repos
+            )
+        table = f"<table><thead>{head}</thead><tbody>{rows}</tbody></table>"
+    else:
+        table = "<p class='muted'>해당 주제로 발견된 레포가 없습니다.</p>"
+
+    meta = []
+    if q.get("language"):
+        meta.append(f"lang={esc(q['language'])}")
+    if q.get("min_stars"):
+        meta.append(f"★≥{q['min_stars']}")
+    meta.append(f"sort={esc(q.get('sort', 'stars'))}")
+    hint = ("<p class='muted'>GFI=good first issue · HW=help wanted (열린 이슈 수). 굵은 GFI = 지금 기여 진입점이 있는 레포.</p>"
+            if with_issues else "")
+    body = f"""
+    {cards_html}
+    <p class='gen'>{' · '.join(meta)}</p>
+    {hint}
+    <h2>발견된 레포 <span class='dim'>({esc(q.get('sort', 'stars'))} 순)</span></h2>
+    {table}"""
+    return f"\"{esc(q.get('topic', ''))}\" — 오픈소스 발견", body
+
+
 CSS = """
 :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --card:#f5f5f7; --border:#e2e2e6;
         --accent:#2563eb; --star:#d97706; --fill:#2563eb; --track:#e2e2e6; }
@@ -155,7 +212,9 @@ def main():
     raw = sys.stdin.read()
     d = json.loads(raw)
     t = d.get("type")
-    if t == "stats":
+    if t == "explore":
+        title, body = render_explore(d)
+    elif t == "stats":
         title, body = render_stats(d)
     else:
         title, body = render_contributions(d)
@@ -167,7 +226,7 @@ def main():
 <h1>{title}</h1>
 <div class='gen'>생성: {esc(d.get('generated', ''))} · gh CLI 기준</div>
 {body}
-<footer>oss-contrib · GitHub CLI 기반 · 머지된 PR 기준 집계</footer>
+<footer>oss-explore · GitHub CLI 기반 · 오픈소스 발견 → 기여 → 회고</footer>
 </div></body></html>"""
     sys.stdout.write(html_out)
 

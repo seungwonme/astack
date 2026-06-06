@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oss-contrib :: discover
+# oss-explore :: discover
 # 기여 진입점 발굴: 비기너 친화 라벨이 붙은 "지금 잡을 수 있는" 열린 이슈를 찾는다.
 # 기본 동작(기여자 관점): (1) 이미 PR이 연결된 이슈 제외 (2) max-age(기본 1년) 넘거나 blocked/wontfix/stale 제외
 # (3) 비기너 라벨 동의어 ~10종을 OR로 검색. 결과는 최근 업데이트 순(또는 --sort).
@@ -117,7 +117,7 @@ search_label() {
 # 발굴: --curated 면 awesome-for-beginners 검증 레포 시드(레포별 등재 라벨), 아니면 비기너 라벨 사전 검색
 ALL='[]'
 if [ "$CURATED" = 1 ]; then
-  CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oss-contrib"
+  CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oss-explore"
   mkdir -p "$CACHE_DIR"
   DATA="$CACHE_DIR/awesome-for-beginners.json"
   # 6시간 캐시 (raw fetch 실패 시 gh api contents base64 폴백)

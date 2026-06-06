@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""oss-contrib :: trending fetcher
+"""oss-explore :: trending fetcher
 github.com/trending 페이지를 파싱해 레포 목록 JSON을 stdout으로 출력.
 관심사/언어를 하드코딩하지 않는다 — 전부 인자로 받는다. 의존성 0(표준 라이브러리).
 """
@@ -14,7 +14,7 @@ import sys
 def fetch(language, since):
     path = f"/trending/{language}" if language else "/trending"
     url = f"https://github.com{path}?since={since}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (oss-contrib)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (oss-explore)"})
     return urllib.request.urlopen(req, timeout=25).read().decode("utf-8", "replace")
 
 

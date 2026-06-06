@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oss-contrib :: trending
+# oss-explore :: trending
 # github.com/trending 을 파싱해 보여준다. 언어·기간·강조 키워드는 전부 인자(하드코딩 없음).
 #
 # Usage: trending.sh [language] [--since daily|weekly|monthly] [--limit N] [--highlight a,b,c] [--issues] [--json]

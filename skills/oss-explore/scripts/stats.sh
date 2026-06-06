@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oss-contrib :: stats
+# oss-explore :: stats
 # PR 기준 기여 통계: 머지율, 연도별 추이, 언어별 분포(머지 PR이 닿은 레포의 주 언어).
 #
 # Usage: stats.sh [username] [--json|--html] [--limit N]
@@ -75,7 +75,7 @@ case "$OUT" in
     ;;
   html)
     SELF="$(cd "$(dirname "$0")" && pwd)"
-    f="${TMPDIR:-/tmp}/oss-contrib-stats-${USER}.html"
+    f="${TMPDIR:-/tmp}/oss-explore-stats-${USER}.html"
     echo "$RESULT" | python3 "$SELF/render_html.py" > "$f"
     echo "HTML 리포트: $f"
     open "$f" 2>/dev/null || true

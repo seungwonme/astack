@@ -1,4 +1,4 @@
-# oss-contrib — gh / jq 레퍼런스
+# oss-explore — gh / jq 레퍼런스
 
 스크립트가 의존하는 `gh` 명령과 `jq` 레시피, 그리고 검증된 함정. 옵션 권위 소스는 항상 `gh <cmd> --help`.
 
@@ -6,6 +6,9 @@
 
 | 목적 | 명령 |
 |---|---|
+| 주제로 레포 발견 (키워드) | `gh search repos "<주제>" --archived=false --sort stars --limit N --json fullName,stargazersCount,forksCount,description,url,updatedAt,pushedAt,language,openIssuesCount` |
+| 주제로 레포 발견 (토픽) | `gh search repos --topic <topic-slug> ...` (위와 동일 필드; 슬러그=소문자-하이픈) |
+| 기여 신호 네이티브 필터 | `gh search repos --good-first-issues ">=N"` / `--help-wanted-issues ">=N"` (필터만; **카운트는 JSON 필드 아님** → per-repo 보강 필요) |
 | 머지된 PR (특정 author) | `gh search prs --author=USER --merged --limit 1000 --json repository,title,url,createdAt` |
 | 전체 PR | `gh search prs --author=USER --limit 1000 --json createdAt,state` |
 | good first issue | `gh search issues --label "good first issue" --state open --language LANG --json repository,title,url,labels,updatedAt` |
@@ -50,9 +53,13 @@ gh api --paginate user/orgs --jq '.[].login' | jq -R . | jq -s .
 9. **`gh search issues` leading-dash query**: query가 `-`로 시작하면 gh가 플래그로 오인(`gh search issues "-linked:pr"` → `unknown shorthand flag: 'l'`). `-linked:pr`/`-label:blocked` 같은 NOT 한정자는 반드시 비-dash 토큰 뒤에 와야 한다. discover는 `created:>=<date>`를 항상 query 맨 앞에 둬 회피.
 10. **`--stale-ok` created 하한은 `2008-01-01`**: "사실상 전체"를 보려고 `date -v-36500d`(1926년)를 넣으면 GitHub 검색이 **0건** 반환(비현실적 과거 날짜). GitHub 창립 무렵 `2008-01-01` 고정이 정답.
 11. **기여자 관점 발굴 한정자**(gh-contribute에서 흡수): `-linked:pr`(이미 PR 달린 이슈 제외), `created:>=<date>`(신선도), `-label:blocked -label:wontfix -label:stale`. `commentsCount`는 `gh search issues --json` 필드라 추가 호출 0건(0=미선점 신호).
+12. **`gh search repos` star 필드는 `stargazersCount`(s 있음)** — `gh repo view`의 `stargazerCount`(s 없음)와 다르다. explore는 전자, contributions/stats는 후자를 쓴다. 헷갈리면 null/빈 값.
+13. **explore는 키워드+토픽을 둘 다 돌려 병합**: 키워드만 → 자기태깅 토픽 레포 누락, 토픽만 → 이름/설명 매치 레포 누락. `--sort` 유효값은 `stars|updated|forks|help-wanted-issues`(gh 기준; explore CLI는 stars/updated/forks 노출). 병합 후 정렬키로 재정렬(updated는 `pushedAt` 기준).
+14. **`--good-first-issues`/`--help-wanted-issues`는 필터 전용**: 레포를 "GFI≥N개"로 거르지만 그 수를 JSON으로 돌려주진 않는다(JSON 필드 목록에 없음). explore는 표시용 카운트를 per-repo `gh search issues --repo R --label "..." --json url | jq length`로 보강(trending `--issues`와 동일 패턴).
 
 ## JSON 출력 스키마
 
+- explore (→ render_html.py): `{type:"explore", generated, query:{topic,language,min_stars,sort,with_issues}, count, repos:[{repo,stars,forks,language,pushed,open_issues,url,description,gfi,hw}]}` (`gfi/hw`는 `--no-issues`면 null)
 - contributions (→ render_html.py): `{type, user, generated, summary:{merged_prs,external_repos,org_groups}, external:[{repo,prs,stars,description,url}], orgs:[{org,prs,repos:[{repo,prs}]}]}`
 - stats (→ render_html.py): `{type, user, generated, summary:{total_prs,merged_prs,merge_rate}, years:[{year,prs}], months:[{month,prs}], weekdays:[{day,prs}], languages:[{name,repos}]}`
 - discover: `{type, query:{language,topic,labels,min_stars,since,exclude_linked,exclude_stale,curated}, total, count, issues:[{repo,title,url,labels,updated,comments,stars?}]}` (`stars`는 `--min-stars`일 때만, `total`>`count`면 `--top`으로 잘림)

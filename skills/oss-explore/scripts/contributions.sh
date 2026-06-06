@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oss-contrib :: contributions
+# oss-explore :: contributions
 # 머지된 PR 기준으로 "본인 소유가 아닌" 레포 기여 내역을 정리한다.
 # 소속 조직(팀 프로젝트) vs 순수 외부 OSS로 분류하고, 외부는 star 순으로 하이라이트.
 #
@@ -109,7 +109,7 @@ case "$OUT" in
     ;;
   html)
     SELF="$(cd "$(dirname "$0")" && pwd)"
-    f="${TMPDIR:-/tmp}/oss-contrib-${USER}.html"
+    f="${TMPDIR:-/tmp}/oss-explore-${USER}.html"
     echo "$RESULT" | python3 "$SELF/render_html.py" > "$f"
     echo "HTML 리포트: $f"
     open "$f" 2>/dev/null || true

@@ -1,0 +1,187 @@
+#!/usr/bin/env bash
+# oss-contrib :: discover
+# 기여 진입점 발굴: 비기너 친화 라벨이 붙은 "지금 잡을 수 있는" 열린 이슈를 찾는다.
+# 기본 동작(기여자 관점): (1) 이미 PR이 연결된 이슈 제외 (2) max-age(기본 1년) 넘거나 blocked/wontfix/stale 제외
+# (3) 비기너 라벨 동의어 ~10종을 OR로 검색. 결과는 최근 업데이트 순(또는 --sort).
+#
+# Usage: discover.sh [--language L] [--label L].. [--topic KW] [--limit N] [--min-stars N]
+#                    [--max-age DAYS] [--stale-ok] [--include-linked] [--sort recent|comments-asc] [--json]
+#   --language L      레포 주 언어 (python, typescript, rust, go ...)
+#   --label L         검색 라벨 (반복). 미지정 시 비기너 라벨 동의어 사전 전체를 OR
+#   --topic KW        이슈 제목/본문 키워드
+#   --limit N         라벨당 검색 상한 (기본 30)
+#   --min-stars N     레포 star 하한 (줄 때만 star 보강 → 양산/이벤트성 레포 제거, star순 정렬)
+#   --max-age DAYS    이 일수보다 오래 전 생성된 이슈 제외 (기본 365)
+#   --stale-ok        오래된/blocked/wontfix/stale 이슈도 포함 (max-age 해제)
+#   --include-linked  이미 PR이 연결된 이슈도 포함 (기본은 제외)
+#   --sort S          recent(기본) | comments-asc(미선점=댓글 적은 순 우선)
+#   --curated         awesome-for-beginners(검증된 ~229 레포)만 시드로, 레포별 등재 라벨로 발굴 (--limit=레포수, 최대 40)
+#   --top N           출력할 이슈 상한 (기본 20). 초과분은 푸터로 안내
+#   --json            원시 JSON 출력
+set -euo pipefail
+
+LANG_FILTER=""
+TOPIC=""
+LIMIT=30
+MIN_STARS=0
+MAX_AGE=365
+STALE_OK=0
+INCLUDE_LINKED=0
+SORT=recent
+CURATED=0
+TOP=20
+OUT=md
+LABELS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --language) shift; LANG_FILTER="${1:?--language needs a value}" ;;
+    --label) shift; LABELS+=("${1:?--label needs a value}") ;;
+    --topic) shift; TOPIC="${1:?--topic needs a value}" ;;
+    --limit) shift; LIMIT="${1:?--limit needs a value}" ;;
+    --min-stars) shift; MIN_STARS="${1:?--min-stars needs a value}" ;;
+    --max-age) shift; MAX_AGE="${1:?--max-age needs a value}" ;;
+    --stale-ok) STALE_OK=1 ;;
+    --include-linked) INCLUDE_LINKED=1 ;;
+    --sort) shift; SORT="${1:?--sort needs a value}" ;;
+    --curated) CURATED=1 ;;
+    --top) shift; TOP="${1:?--top needs a value}" ;;
+    --json) OUT=json ;;
+    -*) echo "unknown option: $1" >&2; exit 1 ;;
+    *) TOPIC="$1" ;;
+  esac
+  shift
+done
+# 비기너 친화 라벨 동의어 사전 (난이도용 일반 라벨 — 특정 분야 하드코딩 아님)
+[ ${#LABELS[@]} -eq 0 ] && LABELS=(
+  "good first issue" "good-first-issue" "help wanted" "first-timers-only"
+  "easy" "low-hanging-fruit" "beginner" "beginner-friendly" "starter" "contributor-friendly"
+)
+
+if [ "$STALE_OK" = 1 ]; then
+  SINCE="2008-01-01"   # GitHub 창립 무렵 = 사실상 전체 (created:>= 토큰은 유지해 leading-dash 방지; 비현실적 과거 날짜는 GitHub이 0건 반환)
+else
+  SINCE=$(date -v-"${MAX_AGE}"d +%Y-%m-%d 2>/dev/null || date -d "-${MAX_AGE} days" +%Y-%m-%d)
+fi
+
+# query 조립: created:>= 를 항상 맨 앞에 둔다.
+# (gh search 는 query가 '-'로 시작하면 플래그로 오인 → created: 로 시작해 leading-dash를 원천 차단)
+build_query() {
+  local q=""
+  [ -n "$TOPIC" ] && q="$TOPIC "
+  q="${q}created:>=$SINCE"
+  [ "$INCLUDE_LINKED" = 0 ] && q="$q -linked:pr"
+  [ "$STALE_OK" = 0 ] && q="$q -label:blocked -label:wontfix -label:stale"
+  printf '%s' "$q"
+}
+QUERY=$(build_query)
+
+search_label() {
+  local label="$1"
+  local args=(--state open --limit "$LIMIT" --json repository,title,url,labels,updatedAt,commentsCount)
+  [ -n "$LANG_FILTER" ] && args+=(--language "$LANG_FILTER")
+  gh search issues "$QUERY" --label "$label" "${args[@]}" 2>/dev/null || echo '[]'
+}
+
+# 발굴: --curated 면 awesome-for-beginners 검증 레포 시드(레포별 등재 라벨), 아니면 비기너 라벨 사전 검색
+ALL='[]'
+if [ "$CURATED" = 1 ]; then
+  CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oss-contrib"
+  mkdir -p "$CACHE_DIR"
+  DATA="$CACHE_DIR/awesome-for-beginners.json"
+  # 6시간 캐시 (raw fetch 실패 시 gh api contents base64 폴백)
+  if [ ! -f "$DATA" ] || find "$DATA" -mmin +360 2>/dev/null | grep -q .; then
+    curl -fsSL https://raw.githubusercontent.com/MunGell/awesome-for-beginners/main/data.json -o "$DATA" 2>/dev/null \
+      || gh api repos/MunGell/awesome-for-beginners/contents/data.json --jq '.content' 2>/dev/null | base64 -d > "$DATA"
+  fi
+  REPO_LIMIT="$LIMIT"; [ "$REPO_LIMIT" -gt 40 ] && REPO_LIMIT=40
+  # --language 로 technologies[] 필터 → "owner/repo<TAB>레포별 등재 라벨"
+  REPOS_TSV=$(jq -r --arg lang "$LANG_FILTER" '
+    .repositories[]
+    | select(($lang == "") or ((.technologies // []) | map(ascii_downcase) | index($lang | ascii_downcase) != null))
+    | "\((.link | sub("https?://github.com/"; "") | sub("/$"; "")))\t\(.label)"' "$DATA" 2>/dev/null | head -n "$REPO_LIMIT")
+  while IFS=$'\t' read -r repo label; do
+    [ -n "$repo" ] && [ -n "$label" ] || continue
+    part=$(gh search issues "created:>=$SINCE -linked:pr -label:blocked" --repo "$repo" --label "$label" --state open --limit 5 \
+      --json repository,title,url,labels,updatedAt,commentsCount 2>/dev/null || echo '[]')
+    ALL=$(jq -c -n --argjson a "$ALL" --argjson b "${part:-[]}" '$a + $b')
+  done <<< "$REPOS_TSV"
+else
+  for label in "${LABELS[@]}"; do
+    part=$(search_label "$label")
+    ALL=$(jq -c -n --argjson a "$ALL" --argjson b "${part:-[]}" '$a + $b')
+  done
+fi
+
+ISSUES=$(echo "$ALL" | jq '
+  unique_by(.url)
+  | map({ repo: .repository.nameWithOwner,
+          title: .title,
+          url: .url,
+          labels: [ .labels[].name ],
+          updated: (.updatedAt[0:10]),
+          comments: (.commentsCount // 0) })')
+
+# 정렬
+case "$SORT" in
+  comments-asc) ISSUES=$(echo "$ISSUES" | jq 'sort_by(.comments, .updated)') ;;
+  *)            ISSUES=$(echo "$ISSUES" | jq 'sort_by(.updated) | reverse') ;;
+esac
+
+# star 하한이 주어지면: unique 레포 star 병렬 보강 → 필터 → star 내림차순
+if [ "$MIN_STARS" -gt 0 ]; then
+  STARTSV=$(echo "$ISSUES" | jq -r '[.[].repo] | unique | .[]' | xargs -P 10 -n 1 sh -c '
+    gh repo view "$1" --json stargazerCount --jq "[\"$1\", (.stargazerCount|tostring)] | @tsv" 2>/dev/null' _)
+  STARMAP=$(echo "$STARTSV" | jq -R 'split("\t") | select(length==2) | {(.[0]): (.[1]|tonumber)}' | jq -s 'add // {}')
+  ISSUES=$(echo "$ISSUES" | jq --argjson m "$STARMAP" --argjson min "$MIN_STARS" '
+    map(.stars = ($m[.repo] // 0)) | map(select(.stars >= $min)) | sort_by(-.stars)')
+fi
+
+# 출력 상한 — 총 발견 수(TOTAL_FOUND)는 보존하고 상위 TOP건만 표시
+TOTAL_FOUND=$(echo "$ISSUES" | jq 'length')
+ISSUES=$(echo "$ISSUES" | jq --argjson n "$TOP" '.[0:$n]')
+
+RESULT=$(jq -n \
+  --argjson issues "$ISSUES" \
+  --arg lang "$LANG_FILTER" \
+  --arg topic "$TOPIC" \
+  --argjson min "$MIN_STARS" \
+  --arg since "$SINCE" \
+  --argjson stale "$STALE_OK" \
+  --argjson linked "$INCLUDE_LINKED" \
+  --argjson curated "$CURATED" \
+  --argjson total "$TOTAL_FOUND" \
+  --argjson labels "$(printf '%s\n' "${LABELS[@]}" | jq -R . | jq -s .)" '
+  { type: "discover",
+    query: { language: $lang, topic: $topic, labels: $labels, min_stars: $min,
+             since: $since, exclude_linked: ($linked == 0), exclude_stale: ($stale == 0),
+             curated: ($curated == 1) },
+    total: $total,
+    count: ($issues | length),
+    issues: $issues }')
+
+case "$OUT" in
+  json) echo "$RESULT" ;;
+  md)
+    echo "$RESULT" | jq -r '
+      "# 기여 진입점 \(.count)건  "
+        + (if .query.curated then "· 큐레이션(awesome-for-beginners) " else "" end)
+        + (if .query.language != "" then "· lang=\(.query.language) " else "" end)
+        + (if .query.topic != "" then "· \"\(.query.topic)\" " else "" end)
+        + (if .query.min_stars > 0 then "· ★≥\(.query.min_stars) " else "" end)
+        + (if .query.exclude_linked then "· PR미연결 " else "" end)
+        + (if .query.exclude_stale then "· \(.query.since) 이후" else "" end) + "\n",
+      "_💬=댓글수(🆕0=아직 아무도 안 집은 이슈)_\n",
+      (if .count == 0 then "_조건에 맞는 열린 이슈가 없습니다._"
+       elif .query.min_stars > 0 then
+        ( "| 레포 | ★ | 💬 | 이슈 | 라벨 | 업데이트 |",
+          "|---|---|---|---|---|---|",
+          (.issues[] | "| \(.repo) | \(.stars) | \(if .comments==0 then "🆕0" else (.comments|tostring) end) | [\((.title)[0:44])](\(.url)) | \(.labels | join(", ")) | \(.updated) |") )
+       else
+        ( "| 레포 | 💬 | 이슈 | 라벨 | 업데이트 |",
+          "|---|---|---|---|---|",
+          (.issues[] | "| \(.repo) | \(if .comments==0 then "🆕0" else (.comments|tostring) end) | [\((.title)[0:50])](\(.url)) | \(.labels | join(", ")) | \(.updated) |") )
+      end),
+      (if (.total // .count) > .count then "\n_총 \(.total)건 중 상위 \(.count) — 더 보려면 `--top \(.total)`_" else empty end)
+    '
+    ;;
+esac

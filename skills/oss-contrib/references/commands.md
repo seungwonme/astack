@@ -56,5 +56,7 @@ gh api --paginate user/orgs --jq '.[].login' | jq -R . | jq -s .
 - contributions (→ render_html.py): `{type, user, generated, summary:{merged_prs,external_repos,org_groups}, external:[{repo,prs,stars,description,url}], orgs:[{org,prs,repos:[{repo,prs}]}]}`
 - stats (→ render_html.py): `{type, user, generated, summary:{total_prs,merged_prs,merge_rate}, years:[{year,prs}], months:[{month,prs}], weekdays:[{day,prs}], languages:[{name,repos}]}`
 - discover: `{type, query:{language,topic,labels,min_stars,since,exclude_linked,exclude_stale,curated}, total, count, issues:[{repo,title,url,labels,updated,comments,stars?}]}` (`stars`는 `--min-stars`일 때만, `total`>`count`면 `--top`으로 잘림)
+- discover `--hot`: `{type:"discover-hot", query:{language,min_good_first_issues}, count, repos:[{repo,stars,description,url,updated}]}`
+- discover `--summary`: `{type:"discover-summary", total_issues, languages:[{language,repos,issues}]}`
 - contributions `--emit-markdown`: 출력은 JSON이 아닌 마크다운 표(외부 OSS만, shields.io star 배지)
 - trending: `{type, language, since, repos:[{repo,period_stars,total_stars,language,description,hl,gfi?,hw?}]}` (`gfi/hw`는 `--issues`일 때만)

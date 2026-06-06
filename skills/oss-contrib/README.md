@@ -45,7 +45,7 @@
 
 2026-06 기존 도구 7종 조사 워크플로(에이전트 8개, 546k 토큰)에서 합성. ✅=구현됨.
 
-### 완료 (P1 + P2 1차)
+### 완료 (P1 + P2)
 - ✅ 비기너 라벨 동의어 사전 ~10종 OR (discover) — awesome-for-beginners/goodfirstissue.dev
 - ✅ `-linked:pr` 이미 PR 달린 이슈 제외 (discover, 기본 on / `--include-linked`) — gh-contribute
 - ✅ 신선도: `--max-age`(기본 365d) + blocked/wontfix/stale 제외 (`--stale-ok`로 해제) — 발굴 도구 5종 공통
@@ -54,12 +54,12 @@
 - ✅ stats 월별/요일별 시간축 분포 (터미널 + HTML 막대) — GitStats
 - ✅ `discover --curated` awesome-for-beginners 검증 레포 시드(레포별 등재 라벨) — awesome-for-beginners
 - ✅ `discover --top N` 출력 상한 + 푸터 — CodeTriage back-off
+- ✅ `discover --hot` good first issue ≥5 활성 레포 star순(`gh search repos` qualifier) — gh-contribute/goodfirstissue.dev
+- ✅ `discover --summary` 발굴 언어별(레포/이슈수) 집계 — goodfirstissue.dev/awesome-for-beginners
 
 ### 남은 후보
 | 우선 | 항목 | 대상 | 출처 |
 |---|---|---|---|
-| P2 | `--summary` 언어별 발굴 집계(언어/레포수/이슈수) | discover | goodfirstissue.dev tags.json |
-| P2 | `--hot` 레포-우선(`gh search repos --good-first-issues='>=N'`) | discover | gh-contribute/goodfirstissue.dev |
 | P2 | 레포 신선도 게이트 `--active-within`(pushedAt 보강) | discover/trending | For Good First Issue/up-for-grabs |
 | P3 | `--docs` 프리셋(문서 기여 채널 분리) | discover | CodeTriage Triage Docs |
 | P3 | `--sdg` 필터(sdg-1~17 토픽) + 임팩트 배지 | discover/contributions | For Good First Issue |

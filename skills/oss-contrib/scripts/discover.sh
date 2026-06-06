@@ -17,6 +17,8 @@
 #   --sort S          recent(기본) | comments-asc(미선점=댓글 적은 순 우선)
 #   --curated         awesome-for-beginners(검증된 ~229 레포)만 시드로, 레포별 등재 라벨로 발굴 (--limit=레포수, 최대 40)
 #   --top N           출력할 이슈 상한 (기본 20). 초과분은 푸터로 안내
+#   --hot             이슈 대신 "good first issue ≥5개인 활성 레포"를 star순으로 (핫스팟 발굴)
+#   --summary         발굴 결과를 언어별(레포수/이슈수)로 집계 (이슈 목록 대신)
 #   --json            원시 JSON 출력
 set -euo pipefail
 
@@ -30,6 +32,9 @@ INCLUDE_LINKED=0
 SORT=recent
 CURATED=0
 TOP=20
+HOT=0
+HOT_MIN=5
+SUMMARY=0
 OUT=md
 LABELS=()
 while [ $# -gt 0 ]; do
@@ -45,12 +50,39 @@ while [ $# -gt 0 ]; do
     --sort) shift; SORT="${1:?--sort needs a value}" ;;
     --curated) CURATED=1 ;;
     --top) shift; TOP="${1:?--top needs a value}" ;;
+    --hot) HOT=1 ;;
+    --summary) SUMMARY=1 ;;
     --json) OUT=json ;;
     -*) echo "unknown option: $1" >&2; exit 1 ;;
     *) TOPIC="$1" ;;
   esac
   shift
 done
+
+# --hot: 이슈가 아니라 "기여 기회(good first issue)가 많은 활성 레포"를 star순으로.
+# gh search repos 의 네이티브 qualifier(--good-first-issues)를 쓴다 — 이슈를 다 긁어 세는 것보다 가볍다.
+if [ "$HOT" = 1 ]; then
+  hargs=(--good-first-issues ">=$HOT_MIN" --sort stars --limit "$LIMIT" --json fullName,stargazersCount,description,url,updatedAt)
+  [ -n "$LANG_FILTER" ] && hargs+=(--language "$LANG_FILTER")
+  [ "$MIN_STARS" -gt 0 ] && hargs+=(--stars ">=$MIN_STARS")
+  HRESULT=$(gh search repos "${hargs[@]}" 2>/dev/null | jq --arg lang "$LANG_FILTER" --argjson min "$HOT_MIN" '
+    { type: "discover-hot", query: { language: $lang, min_good_first_issues: $min },
+      count: length,
+      repos: [ .[] | { repo: .fullName, stars: .stargazersCount, description: (.description // ""), url, updated: (.updatedAt[0:10]) } ] }')
+  if [ "$OUT" = json ]; then
+    echo "$HRESULT"
+  else
+    echo "$HRESULT" | jq -r '
+      "# 핫스팟 레포 \(.count)곳 · good first issue ≥\(.query.min_good_first_issues)"
+        + (if .query.language != "" then " · lang=\(.query.language)" else "" end) + "\n",
+      (if .count == 0 then "_조건에 맞는 레포가 없습니다._" else
+        ( "| 레포 | ★ | 업데이트 | 설명 |", "|---|---|---|---|",
+          (.repos[] | "| [\(.repo)](\(.url)) | \(.stars) | \(.updated) | \((.description)[0:50]) |") )
+      end)'
+  fi
+  exit 0
+fi
+
 # 비기너 친화 라벨 동의어 사전 (난이도용 일반 라벨 — 특정 분야 하드코딩 아님)
 [ ${#LABELS[@]} -eq 0 ] && LABELS=(
   "good first issue" "good-first-issue" "help wanted" "first-timers-only"
@@ -134,6 +166,28 @@ if [ "$MIN_STARS" -gt 0 ]; then
   STARMAP=$(echo "$STARTSV" | jq -R 'split("\t") | select(length==2) | {(.[0]): (.[1]|tonumber)}' | jq -s 'add // {}')
   ISSUES=$(echo "$ISSUES" | jq --argjson m "$STARMAP" --argjson min "$MIN_STARS" '
     map(.stars = ($m[.repo] // 0)) | map(select(.stars >= $min)) | sort_by(-.stars)')
+fi
+
+# --summary: 이슈 목록 대신 "언어별(레포수/이슈수)" 집계로 — repo primaryLanguage 보강 후 group
+if [ "$SUMMARY" = 1 ]; then
+  LANGTSV=$(echo "$ISSUES" | jq -r '[.[].repo] | unique | .[]' | xargs -P 10 -n 1 sh -c '
+    gh repo view "$1" --json primaryLanguage --jq "[\"$1\", (.primaryLanguage.name // \"Unknown\")] | @tsv" 2>/dev/null' _)
+  LANGMAP=$(echo "$LANGTSV" | jq -R 'split("\t") | select(length==2) | {(.[0]): .[1]}' | jq -s 'add // {}')
+  SUMRESULT=$(echo "$ISSUES" | jq --argjson m "$LANGMAP" '
+    map(.lang = ($m[.repo] // "Unknown"))
+    | { type: "discover-summary", total_issues: length,
+        languages: ( group_by(.lang)
+          | map({ language: .[0].lang, repos: ([.[].repo] | unique | length), issues: length })
+          | sort_by(-.issues) ) }')
+  if [ "$OUT" = json ]; then
+    echo "$SUMRESULT"
+  else
+    echo "$SUMRESULT" | jq -r '
+      "# 발굴 언어별 집계 · 총 \(.total_issues) 이슈\n",
+      "| 언어 | 레포 | 이슈 |", "|---|---|---|",
+      (.languages[] | "| \(.language) | \(.repos) | \(.issues) |")'
+  fi
+  exit 0
 fi
 
 # 출력 상한 — 총 발견 수(TOTAL_FOUND)는 보존하고 상위 TOP건만 표시

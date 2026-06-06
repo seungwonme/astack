@@ -24,8 +24,8 @@ description: GitHub CLI(gh) 기반 오픈소스 기여자 툴킷. (1) 내가/특
 "$SC/contributions.sh" --emit-markdown # 프로필 README/이력서용 shields.io 배지 테이블(외부 OSS만)
 ```
 
-### 2. 기여할 곳 발굴 — `discover.sh [--language L] [--label L].. [--topic KW] [--min-stars N] [--curated] [--top N] [--max-age D] [--stale-ok] [--include-linked] [--sort recent|comments-asc] [--json]`
-비기너 친화 라벨 동의어 **~10종**(good first issue / help wanted / first-timers-only / easy / low-hanging-fruit / beginner / starter ...)을 OR로 검색. **기여자 관점 기본값**: 이미 PR이 연결된 이슈 제외(`--include-linked`로 포함), 1년 넘거나 blocked/wontfix/stale 제외(`--max-age`/`--stale-ok`), 상위 20건만(`--top`). 결과에 💬 댓글수(🆕0=아직 아무도 안 집은 이슈). `--min-stars`는 양산/이벤트성 레포 제거 + star순. **`--curated`**는 awesome-for-beginners 검증 레포(레포별 등재 라벨)만 발굴해 노이즈를 더 줄인다. `--sort comments-asc`로 미선점 이슈 우선.
+### 2. 기여할 곳 발굴 — `discover.sh [--language L] [--label L].. [--topic KW] [--min-stars N] [--curated] [--top N] [--hot] [--summary] [--max-age D] [--stale-ok] [--include-linked] [--sort recent|comments-asc] [--json]`
+비기너 친화 라벨 동의어 **~10종**(good first issue / help wanted / first-timers-only / easy / low-hanging-fruit / beginner / starter ...)을 OR로 검색. **기여자 관점 기본값**: 이미 PR이 연결된 이슈 제외(`--include-linked`로 포함), 1년 넘거나 blocked/wontfix/stale 제외(`--max-age`/`--stale-ok`), 상위 20건만(`--top`). 결과에 💬 댓글수(🆕0=아직 아무도 안 집은 이슈). `--min-stars`는 양산/이벤트성 레포 제거 + star순. **`--curated`**는 awesome-for-beginners 검증 레포(레포별 등재 라벨)만 발굴해 노이즈를 더 줄인다. `--sort comments-asc`로 미선점 이슈 우선. **`--hot`**은 이슈 대신 "good first issue ≥5개인 활성 레포"를 star순으로(핫스팟), **`--summary`**는 발굴 결과를 언어별(레포/이슈수)로 집계한다.
 ```bash
 "$SC/discover.sh" --language python                 # 비기너 라벨 전체·PR미연결·최근 1년
 "$SC/discover.sh" --language go --min-stars 500     # 검증된 레포만

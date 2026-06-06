@@ -1,4 +1,5 @@
 ---
+argument-hint: "[query]"
 name: voice-memos
 description: >
   Apple Voice Memos·에이닷 통화 녹음·Apple Notes·Caret MCP를 통합해 음성 메모와

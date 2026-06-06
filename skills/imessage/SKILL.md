@@ -1,4 +1,5 @@
 ---
+argument-hint: "[search|read|recent|send] [contact] [message]"
 name: imessage
 description: >-
   macOS iMessage/SMS/RCS를 다루는 MCP-free 스킬. 읽기·검색은 ~/Library/Messages/chat.db를

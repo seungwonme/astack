@@ -15,8 +15,11 @@ description: Meta(Facebook·Instagram) 광고를 터미널·스크립트·AI 에
 - **생성 순서**: `campaign → adset → creative → ad`. ad가 adset·creative를 묶으므로 creative를 ad보다 먼저 만든다.
 - **모든 리소스는 기본 `PAUSED`로 생성**된다(노출·과금 없음). 게시는 `update --status ACTIVE`를 campaign·adset·ad에 각각 — **이때부터 비용 발생**.
 - **삭제는 cascade**: campaign 삭제 → 하위 adset·ad 동반, adset 삭제 → 하위 ad 동반.
-- **예산은 cents 정수**: `--daily-budget 5000` = $50.00.
-- **설정 우선순위**(높은 순): CLI 플래그(`--ad-account-id`) > 셸 환경변수 > 실행 디렉토리의 `.env` > `~/.config/meta/`. 필수 키: `ACCESS_TOKEN`, `AD_ACCOUNT_ID`. `BUSINESS_ID`는 catalog/dataset에서 ad account로부터 자동 해결(필요 시 명시).
+- **금액 단위는 통화의 minor unit**: USD는 cents(`--daily-budget 5000` = $50.00), 단 **KRW·JPY 등은 자국 기본 단위**(`17208` = 17,208원). insights `spend`도 같은 규칙 — `adaccount list`의 `currency`로 확인 후 해석.
+- **설정 우선순위**(높은 순): CLI 플래그(`--ad-account-id`) > 셸 환경변수 > `.env`(`find_dotenv`로 **cwd부터 상위** 탐색 — 실행 디렉토리 밖은 안 봄). 필수 키: `ACCESS_TOKEN`, `AD_ACCOUNT_ID`.
+  - **토큰만** user-level fallback이 있다: `~/.config/meta/credentials` = **토큰 문자열 그 자체**(plain text, JSON·`key=value` 아님). `~/.config/meta/.env`는 안 읽힌다(저장법 → setup-guide).
+  - **`AD_ACCOUNT_ID`는 글로벌 저장소가 없다**: 셸 env(`~/.zshrc`에 `export`)나 cwd `.env`로만. 어디서나 쓰려면 export.
+  - `BUSINESS_ID`는 catalog/dataset에서 ad account로부터 자동 해결(필요 시 명시).
 - **출력 형식**: `--output table|json|plain` — **전역 플래그라 서브커맨드 앞**에 둔다(`meta --output json ads campaign list`). 스크립트는 `json`(jq) 또는 `plain`(cut/awk).
 
 ## 안전 규칙

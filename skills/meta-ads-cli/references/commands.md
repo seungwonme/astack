@@ -9,7 +9,7 @@
 - 비대화형: 전역 `--no-input`(프롬프트 억제) + `--force`.
 
 ## auth
-- `meta auth status` — 인증 상태(토큰 마스킹 표시). 토큰 저장은 명령이 아니라 `.env`/env의 `ACCESS_TOKEN`으로(→ setup-guide).
+- `meta auth status` — 인증 상태(토큰 마스킹 표시). 토큰 저장은 명령이 아니라 env/`.env`의 `ACCESS_TOKEN` 또는 `~/.config/meta/credentials`(plain text 토큰 자체)로(→ setup-guide).
 
 ## adaccount
 - `adaccount list` / `adaccount current`(설정된 계정 ID 확인). 컬럼: id, name, account_status, currency, timezone_name.
@@ -20,7 +20,7 @@
 
 ## campaign
 - `campaign list|get|create|update|delete`.
-- **create 필수**: `--name`, `--objective`. 선택: `--daily-budget`/`--lifetime-budget`(cents), `--status`(기본 PAUSED).
+- **create 필수**: `--name`, `--objective`. 선택: `--daily-budget`/`--lifetime-budget`(통화 minor unit; USD=cents, KRW·JPY=기본 단위), `--status`(기본 PAUSED).
 - **objective enum**: `OUTCOME_APP_PROMOTION` `OUTCOME_AWARENESS` `OUTCOME_ENGAGEMENT` `OUTCOME_LEADS` `OUTCOME_SALES` `OUTCOME_TRAFFIC`.
 - update `--status`: `ACTIVE|PAUSED|ARCHIVED`.
 

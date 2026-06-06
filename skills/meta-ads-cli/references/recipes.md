@@ -15,7 +15,7 @@ meta ads page list        # 비즈니스 페이지 id → creative의 --page-id
 생성 순서는 **campaign → adset → creative → ad**, 전부 PAUSED로 만들어진다. 마지막에 ACTIVE로 게시(=과금 시작).
 
 ```bash
-# 1) 캠페인 (예산은 cents: 5000 = $50)
+# 1) 캠페인 (예산=통화 minor unit; USD 5000=$50, KRW 5000=5,000원)
 meta ads campaign create --name "My Campaign" --objective OUTCOME_TRAFFIC --daily-budget 5000
 # 2) 광고세트 — 캠페인에 예산 있으면 여기 예산 생략(CBO)
 meta ads adset create <CAMPAIGN_ID> --name "US Audience" \
@@ -59,6 +59,7 @@ meta ads insights get --campaign-id <ID> --fields spend,conversions,purchase_roa
 meta ads insights get --date-preset last_30d --time-increment daily --fields spend   # 일별 추이
 ```
 
+- **`ACTIVE`인데 `{"data":[]}`**: 캠페인이 켜져 있어도 집행 기간이 조회 범위(기본 `last_30d`) 밖이면 빈 결과다. 시작일이 오래된 캠페인은 `--since/--until`로 전체 기간을 재조회하고, `--time-increment daily`로 실제 집행일을 확인.
 - **종료된/과거 캠페인**: `--date-preset`엔 `maximum`이 없다. 임의 기간은 `--since YYYY-MM-DD --until YYYY-MM-DD`(둘이 함께 쓰여 date-preset을 덮어씀).
 - breakdown: `age` `gender` `country` `publisher_platform` `device_platform` `platform_position` `impression_device`.
 - 자주 쓰는 지표: `spend impressions reach clicks ctr cpc cpm frequency conversions cost_per_conversion purchase_roas`.
